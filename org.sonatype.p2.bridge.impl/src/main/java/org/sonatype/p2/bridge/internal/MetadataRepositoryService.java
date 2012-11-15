@@ -9,6 +9,7 @@ package org.sonatype.p2.bridge.internal;
 
 import java.io.File;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -20,7 +21,10 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.URIUtil;
 import org.eclipse.equinox.internal.p2.metadata.ArtifactKey;
+import org.eclipse.equinox.internal.p2.updatesite.CategoryXMLAction;
+import org.eclipse.equinox.internal.p2.updatesite.LocalUpdateSiteAction;
 import org.eclipse.equinox.p2.core.IProvisioningAgent;
 import org.eclipse.equinox.p2.core.ProvisionException;
 import org.eclipse.equinox.p2.metadata.IInstallableUnit;
@@ -41,6 +45,9 @@ import org.eclipse.equinox.p2.metadata.expression.ExpressionUtil;
 import org.eclipse.equinox.p2.metadata.expression.IExpression;
 import org.eclipse.equinox.p2.metadata.expression.IExpressionFactory;
 import org.eclipse.equinox.p2.metadata.expression.IMatchExpression;
+import org.eclipse.equinox.p2.publisher.IPublisherAction;
+import org.eclipse.equinox.p2.publisher.Publisher;
+import org.eclipse.equinox.p2.publisher.PublisherInfo;
 import org.eclipse.equinox.p2.query.IQuery;
 import org.eclipse.equinox.p2.query.IQueryResult;
 import org.eclipse.equinox.p2.query.QueryUtil;
@@ -84,9 +91,21 @@ public class MetadataRepositoryService
             {
                 throw new RuntimeException( "Cannot write metadata repository as repository coud not be created" );
             }
+
+            IProvisioningAgent agent = createProvisioningAgent();
+
+            final PublisherInfo info = new PublisherInfo();
+            info.setMetadataRepository(repository);
+
+            Publisher publisher = new org.eclipse.equinox.p2.publisher.Publisher( info );
+            URI categoryDefinition = URIUtil.fromString("platform:/plugin/org.sonatype.p2.bridge.impl/category.xml");
+            CategoryXMLAction categoryAction = new org.eclipse.equinox.internal.p2.updatesite.CategoryXMLAction(categoryDefinition, null);
+            publisher.publish(new IPublisherAction[]{ categoryAction },new NullProgressMonitor() );
         }
         catch ( final ProvisionException e )
         {
+            throw new RuntimeException( "Cannot write metadata repository. Reason: " + e.getMessage(), e );
+        } catch (URISyntaxException e) {
             throw new RuntimeException( "Cannot write metadata repository. Reason: " + e.getMessage(), e );
         }
         finally
